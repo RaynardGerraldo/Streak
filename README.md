@@ -1,6 +1,6 @@
 # Streak Tracker
 
-A super minimal streak tracking app built in C, for Android. 
+A super minimal daily streak tracking app built in C, for Android. 
 
 77 kb apk, built to track workout streaks but could be used for anything
 
