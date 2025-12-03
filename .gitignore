@@ -4,3 +4,4 @@ rawdrawandroid/makecapk/
 rawdrawandroid/cnfgtest.apk
 rawdrawandroid/AndroidManifest.xml
 rawdrawandroid/output.map
+rawdrawandroid/*.apk*
