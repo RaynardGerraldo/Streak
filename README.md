@@ -6,7 +6,7 @@ A super minimal daily streak tracking app built in C, for Android.
 
 ## How to Compile
 
-1. Ensure you have the Android NDK and SDK installed.
+1. Ensure you have the Android NDK and SDK installed. Then change line 22 `ANDROIDVERSION?=` in build/Makefile to your SDK version. Default is 34.
 
 2. Clone this repo
 
