@@ -1,4 +1,4 @@
-# Streak Tracker
+# Streak
 
 A super minimal daily streak tracking app built in C, for Android. 
 
@@ -10,11 +10,11 @@ A super minimal daily streak tracking app built in C, for Android.
 
 2. Clone this repo
 
-`git clone https://github.com/RaynardGerraldo/Streak`
+`git clone --recurse-submodules https://github.com/RaynardGerraldo/Streak`
 
-3. Navigate to rawdrawandroid folder
+3. Navigate to build folder
 
-`cd Streak; cd rawdrawandroid/`
+`cd Streak; cd build/`
 
 4. Connect your android phone to your machine with adb activated
 
