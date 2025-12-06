@@ -11,9 +11,9 @@ APPNAME?=Streak
 LABEL?=$(APPNAME)
 APKFILE ?= $(APPNAME).apk
 PACKAGENAME?=org.rayg.streaktracker
-RAWDRAWANDROID?=.
+RAWDRAWANDROID?=rawdrawandroid
 RAWDRAWANDROIDSRCS=$(RAWDRAWANDROID)/android_native_app_glue.c
-SRC?=../main.c
+SRC?=main.c
 BUILD_DIR?=.
 
 #We've tested it with android version 22, 24, 28, 29, 30, 32 and 34.
@@ -174,7 +174,7 @@ $(BUILD_DIR)/makecapk/lib/x86_64/lib$(APPNAME).so : $(ANDROIDSRCS)
 
 makecapk.apk : $(TARGETS) $(EXTRA_ASSETS_TRIGGER) $(BUILD_DIR)/AndroidManifest.xml $(KEYSTOREFILE)
 	mkdir -p $(BUILD_DIR)/makecapk/assets
-	cp -r Sources/assets/* $(BUILD_DIR)/makecapk/assets
+	cp -r assets/* $(BUILD_DIR)/makecapk/assets
 	rm -rf $(BUILD_DIR)/temp.apk
 	$(AAPT) package -f -F $(BUILD_DIR)/temp.apk -I $(ANDROID_JAR) -M $(BUILD_DIR)/AndroidManifest.xml -S res --auto-add-overlay -A $(BUILD_DIR)/makecapk/assets -v --target-sdk-version $(ANDROIDTARGET)
 	unzip -o $(BUILD_DIR)/temp.apk -d $(BUILD_DIR)/makecapk
@@ -216,4 +216,4 @@ run : push
 	$(ADB) shell am start -n $(PACKAGENAME)/$(ACTIVITYNAME)
 
 clean :
-	rm -rf $(BUILD_DIR)/AndroidManifest.xml $(BUILD_DIR)/temp.apk $(BUILD_DIR)/makecapk.apk $(BUILD_DIR)/makecapk $(BUILD_DIR)/$(APKFILE)
+	rm -rf $(BUILD_DIR)/AndroidManifest.xml $(BUILD_DIR)/temp.apk $(BUILD_DIR)/makecapk.apk $(BUILD_DIR)/makecapk $(BUILD_DIR)/$(APKFILE) $(BUILD_DIR)/$(APKFILE).idsig $(BUILD_DIR)/output.map 
