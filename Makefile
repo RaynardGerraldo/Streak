@@ -173,10 +173,8 @@ $(BUILD_DIR)/makecapk/lib/x86_64/lib$(APPNAME).so : $(ANDROIDSRCS)
 # 	zipalign'ed and signed makecapk.apk
 
 makecapk.apk : $(TARGETS) $(EXTRA_ASSETS_TRIGGER) $(BUILD_DIR)/AndroidManifest.xml $(KEYSTOREFILE)
-	mkdir -p $(BUILD_DIR)/makecapk/assets
-	cp -r assets/* $(BUILD_DIR)/makecapk/assets
 	rm -rf $(BUILD_DIR)/temp.apk
-	$(AAPT) package -f -F $(BUILD_DIR)/temp.apk -I $(ANDROID_JAR) -M $(BUILD_DIR)/AndroidManifest.xml -S res --auto-add-overlay -A $(BUILD_DIR)/makecapk/assets -v --target-sdk-version $(ANDROIDTARGET)
+	$(AAPT) package -f -F $(BUILD_DIR)/temp.apk -I $(ANDROID_JAR) -M $(BUILD_DIR)/AndroidManifest.xml -S res --auto-add-overlay -v --target-sdk-version $(ANDROIDTARGET)
 	unzip -o $(BUILD_DIR)/temp.apk -d $(BUILD_DIR)/makecapk
 	rm -rf $(BUILD_DIR)/makecapk.apk
 	# We use -4 here for the compression ratio, as it's a good balance of speed and size. -9 will make a slightly smaller executable but takes longer to build
