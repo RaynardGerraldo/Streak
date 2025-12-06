@@ -11,10 +11,10 @@ APPNAME?=Streak
 LABEL?=$(APPNAME)
 APKFILE ?= $(APPNAME).apk
 PACKAGENAME?=org.rayg.streaktracker
-RAWDRAWANDROID?=rawdrawandroid
+RAWDRAWANDROID?=../rawdrawandroid
 RAWDRAWANDROIDSRCS=$(RAWDRAWANDROID)/android_native_app_glue.c
-SRC?=main.c
-BUILD_DIR?=.
+SRC?=../main.c
+BUILD_DIR?=..
 
 #We've tested it with android version 22, 24, 28, 29, 30, 32 and 34.
 #You can target something like Android 28, but if you set ANDROIDVERSION to say 22, then
