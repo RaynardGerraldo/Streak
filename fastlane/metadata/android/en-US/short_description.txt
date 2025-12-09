@@ -1,0 +1,1 @@
+Lightweight & Minimal daily streak tracker, built in C.

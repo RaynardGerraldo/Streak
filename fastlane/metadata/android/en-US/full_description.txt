@@ -1,0 +1,1 @@
+A lightweight, super minimal, streak tracker built in C with rawdrawandroid. Log your daily habits and view your streak continuity. Add entries by clicking the + button, ↩ to undo, or manual input in Add Date.
