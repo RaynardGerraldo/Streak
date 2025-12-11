@@ -87,9 +87,6 @@ else
 ANDROID_JAR:=$(ANDROIDSDK)/platforms/android-$(ANDROIDVERSION)/android.jar
 endif
 
-android-$(ANDROIDVERSION).jar :
-	wget https://github.com/Sable/android-platforms/raw/refs/heads/master/android-$(ANDROIDVERSION)/android.jar -O android-$(ANDROIDVERSION).jar
-
 testsdk :
 	@echo "SDK:\t\t" $(ANDROIDSDK)
 	@echo "NDK:\t\t" $(NDK)
