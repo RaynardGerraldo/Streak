@@ -183,7 +183,6 @@ $(BUILD_DIR)/makecapk/lib/x86_64/lib$(APPNAME).so : $(ANDROIDSRCS)
 #	temp.apk + resources.arsc(compressed res) + Manifest, all compressed
 # $(APKFILE)
 # 	zipalign'ed and signed makecapk.apk
-
 makecapk.apk : $(TARGETS) $(EXTRA_ASSETS_TRIGGER) $(BUILD_DIR)/AndroidManifest.xml $(KEYSTOREFILE)
 	rm -rf $(BUILD_DIR)/temp.apk
 	$(AAPT) package -f -F $(BUILD_DIR)/temp.apk -I $(ANDROID_JAR) -M $(BUILD_DIR)/AndroidManifest.xml -S res --auto-add-overlay -v --target-sdk-version $(ANDROIDTARGET)
@@ -193,15 +192,13 @@ makecapk.apk : $(TARGETS) $(EXTRA_ASSETS_TRIGGER) $(BUILD_DIR)/AndroidManifest.x
 	# fix timestamp to latest commit
 	find $(BUILD_DIR)/makecapk -exec touch -d @$(shell git log -1 --format=%ct) {} +
 
-	cd $(BUILD_DIR)/makecapk && find . -type f | LC_ALL=C sort | zip -D4Xo@ ../makecapk.apk
-	# We use -4 here for the compression ratio, as it's a good balance of speed and size. -9 will make a slightly smaller executable but takes longer to build
-	cd $(BUILD_DIR)/makecapk && zip -D4r ../makecapk.apk . && zip -D0r ../makecapk.apk ./resources.arsc ./AndroidManifest.xml
-	# jarsigner is only necessary when targetting Android < 7.0
-	#jarsigner -sigalg SHA1withRSA -digestalg SHA1 -verbose -keystore $(KEYSTOREFILE) -storepass $(STOREPASS) $(BUILD_DIR)/makecapk.apk $(ALIASNAME)
+	# force utc, 0 compression
+	cd $(BUILD_DIR)/makecapk && find . -type f | LC_ALL=C sort | TZ=UTC zip -D0Xo@ ../makecapk.apk
+
+	# zipalign (reproduct tool)
 	rm -rf $(BUILD_DIR)/$(APKFILE)
 	$(BUILD_TOOLS)/zipalign -v 4 $(BUILD_DIR)/makecapk.apk $(BUILD_DIR)/$(APKFILE)
 
-	# F-Droid runs with KEYSTOREFILE empty, also removes the sed line from yml
 	if [ -n "$(KEYSTOREFILE)" ] && [ -f "$(KEYSTOREFILE)" ]; then \
 		$(BUILD_TOOLS)/apksigner sign --key-pass pass:$(STOREPASS) --ks-pass pass:$(STOREPASS) --ks $(KEYSTOREFILE) $(BUILD_DIR)/$(APKFILE); \
 	fi
