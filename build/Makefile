@@ -14,7 +14,7 @@ RAWDRAWANDROIDSRCS=$(RAWDRAWANDROID)/android_native_app_glue.c
 SRC?=../main.c
 BUILD_DIR?=..
 
-# Pin
+# Pin, 33
 ANDROIDVERSION=33
 ANDROIDTARGET?=$(ANDROIDVERSION)
 
@@ -60,7 +60,14 @@ SDK_LOCATIONS += $(ANDROID_HOME) $(ANDROID_SDK_ROOT) ~/Android/Sdk $(HOME)/Libra
 #Just a little Makefile witchcraft to find the first SDK_LOCATION that exists
 #Then find an ndk folder and build tools folder in there.
 ANDROIDSDK?=$(firstword $(foreach dir, $(SDK_LOCATIONS), $(basename $(dir) ) ) )
-NDK?=$(firstword $(ANDROID_NDK) $(ANDROID_NDK_HOME) $(wildcard $(ANDROIDSDK)/ndk/*) $(wildcard $(ANDROIDSDK)/ndk-bundle/*) )
+# get all available ndk candidates
+NDK_CANDIDATES := $(ANDROID_NDK) \
+	           $(ANDROID_NDK_HOME) \
+	           $(wildcard $(ANDROIDSDK)/ndk/27.*) \
+	           $(wildcard $(ANDROIDSDK)/ndk-bundle) \
+	           $(wildcard $(ANDROIDSDK)/ndk-bundle) \
+	           $(wildcard $(ANDROIDSDK)/ndk/*)
+NDK := $(firstword $(NDK_CANDIDATES))
 BUILD_TOOLS?=$(lastword $(wildcard $(ANDROIDSDK)/build-tools/*) )
 
 # fall back to default Android SDL installation location if valid NDK was not found
@@ -79,13 +86,13 @@ ifeq ($(BUILD_TOOLS),)
 $(error BUILD_TOOLS directory not found)
 endif
 
-# Pin NDK
+# Pin NDK, 27
 NDK_VERSION_FILE := $(NDK)/source.properties
 ifneq ("$(wildcard $(NDK_VERSION_FILE))","")
-    NDK_VERSION_MAJOR := $(shell grep "Pkg.Revision" $(NDK_VERSION_FILE) | cut -d = -f 2 | cut -d . -f 1 | tr -d ' ')
-    ifneq ($(NDK_VERSION_MAJOR), 27)
-        $(error "Incorrect NDK Version. Please use NDK r27 (Found version $(NDK_VERSION_MAJOR))")
-    endif
+	NDK_VERSION_MAJOR := $(shell grep "Pkg.Revision" $(NDK_VERSION_FILE) | cut -d = -f 2 | cut -d . -f 1 | tr -d ' ')
+	ifneq ($(NDK_VERSION_MAJOR), 27)
+	    $(error "Incorrect NDK Version. Please use NDK r27 (Found version $(NDK_VERSION_MAJOR))")
+	endif
 endif
 
 ifneq ("$(wildcard ./android-$(ANDROIDVERSION).jar)","")
@@ -181,6 +188,11 @@ makecapk.apk : $(TARGETS) $(EXTRA_ASSETS_TRIGGER) $(BUILD_DIR)/AndroidManifest.x
 	$(AAPT) package -f -F $(BUILD_DIR)/temp.apk -I $(ANDROID_JAR) -M $(BUILD_DIR)/AndroidManifest.xml -S res --auto-add-overlay -v --target-sdk-version $(ANDROIDTARGET)
 	unzip -o $(BUILD_DIR)/temp.apk -d $(BUILD_DIR)/makecapk
 	rm -rf $(BUILD_DIR)/makecapk.apk
+
+	# fix timestamp to latest commit
+	find $(BUILD_DIR)/makecapk -exec touch -d @$(shell git log -1 --format=%ct) {} +
+
+	cd $(BUILD_DIR)/makecapk && find . -type f | LC_ALL=C sort | zip -D4Xo@ ../makecapk.apk
 	# We use -4 here for the compression ratio, as it's a good balance of speed and size. -9 will make a slightly smaller executable but takes longer to build
 	cd $(BUILD_DIR)/makecapk && zip -D4r ../makecapk.apk . && zip -D0r ../makecapk.apk ./resources.arsc ./AndroidManifest.xml
 	# jarsigner is only necessary when targetting Android < 7.0
@@ -188,7 +200,7 @@ makecapk.apk : $(TARGETS) $(EXTRA_ASSETS_TRIGGER) $(BUILD_DIR)/AndroidManifest.x
 	rm -rf $(BUILD_DIR)/$(APKFILE)
 	$(BUILD_TOOLS)/zipalign -v 4 $(BUILD_DIR)/makecapk.apk $(BUILD_DIR)/$(APKFILE)
 
-    # F-Droid runs with KEYSTOREFILE empty, also removes the sed line from yml
+	# F-Droid runs with KEYSTOREFILE empty, also removes the sed line from yml
 	if [ -n "$(KEYSTOREFILE)" ] && [ -f "$(KEYSTOREFILE)" ]; then \
 		$(BUILD_TOOLS)/apksigner sign --key-pass pass:$(STOREPASS) --ks-pass pass:$(STOREPASS) --ks $(KEYSTOREFILE) $(BUILD_DIR)/$(APKFILE); \
 	fi
