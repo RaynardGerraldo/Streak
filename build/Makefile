@@ -19,7 +19,7 @@ ANDROIDVERSION=33
 ANDROIDTARGET?=$(ANDROIDVERSION)
 
 # for reproducible, ensures the binary hashes match regardless of where the project is stored.
-CFLAGS?=-ffunction-sections -Os -fdata-sections -Wall -fvisibility=hidden -ffile-prefix-map=$(BUILD_DIR)=.
+CFLAGS?=-ffunction-sections -Os -fdata-sections -Wall -fvisibility=hidden -ffile-prefix-map=$(BUILD_DIR)=. -ffile-prefix-map=$(NDK)=/ndk
 LDFLAGS?=-Wl,--gc-sections -Wl,-Map=$(BUILD_DIR)/output.map -s
 ANDROID_FULLSCREEN?=y
 ADB?=adb
