@@ -5,8 +5,6 @@ all : makecapk.apk
 
 .PHONY : push run
 
-# WARNING WARNING WARNING!  YOU ABSOLUTELY MUST OVERRIDE THE PROJECT NAME
-# you should also override these parameters, get your own signatre file and make your own manifest.
 APPNAME?=Streak
 LABEL?=$(APPNAME)
 APKFILE ?= $(APPNAME).apk
@@ -16,12 +14,12 @@ RAWDRAWANDROIDSRCS=$(RAWDRAWANDROID)/android_native_app_glue.c
 SRC?=../main.c
 BUILD_DIR?=..
 
-#We've tested it with android version 22, 24, 28, 29, 30, 32 and 34.
-#You can target something like Android 28, but if you set ANDROIDVERSION to say 22, then
-#Your app should (though not necessarily) support all the way back to Android 22.
-ANDROIDVERSION?=33
+# Pin
+ANDROIDVERSION=33
 ANDROIDTARGET?=$(ANDROIDVERSION)
-CFLAGS?=-ffunction-sections -Os -fdata-sections -Wall -fvisibility=hidden
+
+# for reproducible, ensures the binary hashes match regardless of where the project is stored.
+CFLAGS?=-ffunction-sections -Os -fdata-sections -Wall -fvisibility=hidden -ffile-prefix-map=$(BUILD_DIR)=.
 LDFLAGS?=-Wl,--gc-sections -Wl,-Map=$(BUILD_DIR)/output.map -s
 ANDROID_FULLSCREEN?=y
 ADB?=adb
@@ -79,6 +77,15 @@ $(error NDK directory not found)
 endif
 ifeq ($(BUILD_TOOLS),)
 $(error BUILD_TOOLS directory not found)
+endif
+
+# Pin NDK
+NDK_VERSION_FILE := $(NDK)/source.properties
+ifneq ("$(wildcard $(NDK_VERSION_FILE))","")
+    NDK_VERSION_MAJOR := $(shell grep "Pkg.Revision" $(NDK_VERSION_FILE) | cut -d = -f 2 | cut -d . -f 1 | tr -d ' ')
+    ifneq ($(NDK_VERSION_MAJOR), 27)
+        $(error "Incorrect NDK Version. Please use NDK r27 (Found version $(NDK_VERSION_MAJOR))")
+    endif
 endif
 
 ifneq ("$(wildcard ./android-$(ANDROIDVERSION).jar)","")
@@ -150,12 +157,12 @@ $(BUILD_DIR)/makecapk/lib/x86_64/lib$(APPNAME).so : $(ANDROIDSRCS)
 	mkdir -p $(BUILD_DIR)/makecapk/lib/x86_64
 	$(CC_x86) $(CFLAGS) $(CFLAGS_x86_64) -o $@ $^ -L$(NDK)/toolchains/llvm/prebuilt/$(OS_NAME)/sysroot/usr/lib/x86_64-linux-android/$(ANDROIDVERSION) $(LDFLAGS)
 
-#We're really cutting corners.  You should probably use resource files.. Replace android:label="@string/app_name" and add a resource file.
+#We're really cutting corners.  You should probably use resource files.. Replace android:label="@string/app_name" and add a resource file.
 #Then do this -S Sources/res on the aapt line.
-#For icon support, add -S makecapk/res to the aapt line.  also,  android:icon="@mipmap/icon" to your application line in the manifest.
+#For icon support, add -S makecapk/res to the aapt line.  also,  android:icon="@mipmap/icon" to your application line in the manifest.
 #If you want to strip out about 800 bytes of data you can remove the icon and strings.
 
-#Notes for the past:  These lines used to work, but don't seem to anymore.  Switched to newer jarsigner.
+#Notes for the past:  These lines used to work, but don't seem to anymore.  Switched to newer jarsigner.
 #(zipalign -c -v 8 makecapk.apk)||true #This seems to not work well.
 #jarsigner -verify -verbose -certs makecapk.apk
 
@@ -180,8 +187,12 @@ makecapk.apk : $(TARGETS) $(EXTRA_ASSETS_TRIGGER) $(BUILD_DIR)/AndroidManifest.x
 	#jarsigner -sigalg SHA1withRSA -digestalg SHA1 -verbose -keystore $(KEYSTOREFILE) -storepass $(STOREPASS) $(BUILD_DIR)/makecapk.apk $(ALIASNAME)
 	rm -rf $(BUILD_DIR)/$(APKFILE)
 	$(BUILD_TOOLS)/zipalign -v 4 $(BUILD_DIR)/makecapk.apk $(BUILD_DIR)/$(APKFILE)
-	#Using the apksigner in this way is only required on Android 30+
-	$(BUILD_TOOLS)/apksigner sign --key-pass pass:$(STOREPASS) --ks-pass pass:$(STOREPASS) --ks $(KEYSTOREFILE) $(BUILD_DIR)/$(APKFILE)
+
+    # F-Droid runs with KEYSTOREFILE empty, also removes the sed line from yml
+	if [ -n "$(KEYSTOREFILE)" ] && [ -f "$(KEYSTOREFILE)" ]; then \
+		$(BUILD_TOOLS)/apksigner sign --key-pass pass:$(STOREPASS) --ks-pass pass:$(STOREPASS) --ks $(KEYSTOREFILE) $(BUILD_DIR)/$(APKFILE); \
+	fi
+
 	rm -rf $(BUILD_DIR)/temp.apk
 	rm -rf $(BUILD_DIR)/makecapk.apk
 	@ls -l $(BUILD_DIR)/$(APKFILE)
@@ -211,4 +222,4 @@ run : push
 	$(ADB) shell am start -n $(PACKAGENAME)/$(ACTIVITYNAME)
 
 clean :
-	rm -rf $(BUILD_DIR)/AndroidManifest.xml $(BUILD_DIR)/temp.apk $(BUILD_DIR)/makecapk.apk $(BUILD_DIR)/makecapk $(BUILD_DIR)/$(APKFILE) $(BUILD_DIR)/$(APKFILE).idsig $(BUILD_DIR)/output.map 
+	rm -rf $(BUILD_DIR)/AndroidManifest.xml $(BUILD_DIR)/temp.apk $(BUILD_DIR)/makecapk.apk $(BUILD_DIR)/makecapk $(BUILD_DIR)/$(APKFILE) $(BUILD_DIR)/$(APKFILE).idsig $(BUILD_DIR)/output.map
