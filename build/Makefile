@@ -192,6 +192,9 @@ makecapk.apk : $(TARGETS) $(EXTRA_ASSETS_TRIGGER) $(BUILD_DIR)/AndroidManifest.x
 	# fix timestamp to latest commit
 	find $(BUILD_DIR)/makecapk -exec touch -d @$(shell git log -1 --format=%ct) {} +
 
+	# match permissions
+	find $(BUILD_DIR)/makecapk -name "*.so" -exec chmod go-w {} +
+
 	# force utc, 0 compression
 	cd $(BUILD_DIR)/makecapk && find . -type f | LC_ALL=C sort | TZ=UTC zip -D0Xo@ ../makecapk.apk
 
