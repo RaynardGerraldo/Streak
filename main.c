@@ -16,6 +16,20 @@
 #define MAX_ENTRIES 1000
 #define FILENAME "streak_data.txt"
 
+// scaling helpers
+float GetScale(int w, int h) {
+    int min_dim = (w < h) ? w : h;
+    // 700.0f reference to make UI larger on 1080p+ screens
+    float s = min_dim / 700.0f;
+    if (s < 0.5f) s = 0.5f;
+    return s;
+}
+
+int GetTextScale(int baseSize, float globalScale) {
+    int s = (int)(baseSize * globalScale + 0.5f);
+    return (s < 1) ? 1 : s;
+}
+
 typedef struct {
     int year;
     int month;
@@ -123,27 +137,18 @@ void AddEntry(int y, int m, int d) {
 }
 
 void LazyEntry() {
-    if (entryCount >= MAX_ENTRIES) return;
+    time_t t = time(0);
+    struct tm *now = localtime(&t);
     
-    struct tm tm = {0};
-    
-    if (entryCount == 0) {
-        time_t t = time(0);
-        struct tm *now = localtime(&t);
-        tm = *now;
-    } else {
-        // take newest entry
-        tm.tm_year = entries[0].year - 1900;
-        tm.tm_mon = entries[0].month - 1;
-        tm.tm_mday = entries[0].day + 1;
-        tm.tm_hour = 12;
-        tm.tm_isdst = -1;
-        
-        // next month or next year fix
-        mktime(&tm);
+    // check if today is already added to prevent dupes and future dates
+    if (entryCount > 0) {
+        if (entries[0].year == (now->tm_year + 1900) && 
+            entries[0].month == (now->tm_mon + 1) && 
+            entries[0].day == now->tm_mday) {
+            return;
+        }
     }
-    
-    AddEntry(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+    AddEntry(now->tm_year + 1900, now->tm_mon + 1, now->tm_mday);
 }
 
 void Undo() {
@@ -194,6 +199,8 @@ void HandleKey( int keycode, int bDown ) {
 void HandleButton( int x, int y, int button, int bDown ) {
     short w, h;
     CNFGGetDimensions(&w, &h);
+ 
+    float scale = GetScale(w, h);
 
     if (bDown) {
         lastTouchY = y;
@@ -206,23 +213,26 @@ void HandleButton( int x, int y, int button, int bDown ) {
         if (isTap) {
             char streakStr[32];
             sprintf(streakStr, "Streak: %d", streakCount);
-            int charWidth = 6 * 10;
+ 
+            int titleScale = GetTextScale(10, scale);
+            int charWidth = 6 * titleScale;
             int textWidth = strlen(streakStr) * charWidth;
             int textEndX = (w + textWidth) / 2;
             
-            int btnY = 100;
-            int btnH = 60;
-            int btnX = textEndX + 20;
-            int btnW = 60;
+            // bigger touch targets to match bigger buttons
+            int btnY = 90 * scale; 
+            int btnH = 120 * scale;
+            int btnX = textEndX + (20 * scale);
+            int btnW = 120 * scale;
             
-            // check lazy
+            // check lazy (+)
             if (x > btnX && x < btnX + btnW && y > btnY && y < btnY + btnH) {
                 LazyEntry();
                 return;
             }
             
-            // check undo
-            int undoY = btnY + 70;
+            // check undo (<)
+            int undoY = btnY + (130 * scale);
             if (x > btnX && x < btnX + btnW && y > undoY && y < undoY + btnH) {
                 Undo();
                 return;
@@ -234,7 +244,7 @@ void HandleButton( int x, int y, int button, int bDown ) {
                 AndroidDisplayKeyboard(0);
             }
             // if keyboard is closed, tapping add date opens it
-            else if (y > h - 150) {
+            else if (y > h - (150 * scale)) {
                 isTyping = 1;
                 AndroidDisplayKeyboard(1);
             }
@@ -244,6 +254,10 @@ void HandleButton( int x, int y, int button, int bDown ) {
 
 void HandleMotion( int x, int y, int mask ) {
     if (isDragging) {
+        short w, h;
+        CNFGGetDimensions(&w, &h);
+        float scale = GetScale(w, h);
+
         int dy = y - lastTouchY;
         if (abs(y - startTouchY) > 10) isTap = 0;
         
@@ -251,7 +265,9 @@ void HandleMotion( int x, int y, int mask ) {
         if (!isTyping) {
             scrollY += dy;
             if (scrollY > 0) scrollY = 0; 
-            int maxScroll = -(entryCount * 80); 
+  
+            int rowHeight = 80 * scale;
+            int maxScroll = -(entryCount * rowHeight); 
             if (maxScroll > 0) maxScroll = 0;
             if (scrollY < maxScroll - 500) scrollY = maxScroll - 500; 
         }
@@ -278,44 +294,50 @@ int main( int argc, char ** argv ) {
         CNFGGetDimensions( &w, &h );
         if (w == 0 || h == 0) { CNFGSwapBuffers(); continue; }
         
+        float scale = GetScale(w, h);
+
         // draw streak count
         CNFGColor(0xFFFFFFFF);
         char streakStr[32];
         sprintf(streakStr, "Streak: %d", streakCount);
-        CNFGSetLineWidth(5); 
-        DrawTextCentered(streakStr, 10, 100, w);
+        CNFGSetLineWidth(GetTextScale(5, scale)); 
+        DrawTextCentered(streakStr, GetTextScale(10, scale), 100 * scale, w);
 
         // draw header buttons
-        int charWidth = 6 * 10;
+        int titleScale = GetTextScale(10, scale);
+        int charWidth = 6 * titleScale;
         int textWidth = strlen(streakStr) * charWidth;
         int textEndX = (w + textWidth) / 2;
         
-        // lazy
+        int btnScale = GetTextScale(20, scale);
+
+        // lazy (+)
         CNFGColor(0x00FF00FF);
-        CNFGPenX = textEndX + 20;
-        CNFGPenY = 100;
-        CNFGDrawText("+", 10);
+        CNFGPenX = textEndX + (20 * scale);
+        CNFGPenY = 100 * scale;
+        CNFGDrawText("+", btnScale);
         
-        // undo
+        // undo (<)
         CNFGColor(0xFF0000FF);
-        CNFGPenX = textEndX + 20;
-        CNFGPenY = 170; // 100 + 70
-        CNFGDrawText("<", 10);
+        CNFGPenX = textEndX + (20 * scale);
+        CNFGPenY = 230 * scale; 
+        CNFGDrawText("<", btnScale);
 
         // draw scrollable list
         CNFGColor(0xFFFFFFFF);
-        CNFGSetLineWidth(2);
-        int listStartY = 300 + scrollY;
+        CNFGSetLineWidth(GetTextScale(2, scale));
+        int listStartY = (300 * scale) + scrollY;
+        int rowHeight = 80 * scale;
         char dateStr[64];
         
         for(int i = 0; i < entryCount; i++) {
             struct tm* t = localtime(&entries[i].timestamp);
             strftime(dateStr, sizeof(dateStr), "%A, %b %d %Y", t);
             
-            int itemY = listStartY + (i * 80);
+            int itemY = listStartY + (i * rowHeight);
             if (itemY < -50 || itemY > h) continue;
 
-            DrawTextCentered(dateStr, 5, itemY, w);
+            DrawTextCentered(dateStr, GetTextScale(5, scale), itemY, w);
         }
 
         // ui layer
@@ -325,31 +347,34 @@ int main( int argc, char ** argv ) {
 
             // avoid keyboard obstruction
             int boxY = h / 5;
-            int boxH = 250;
-            
+            int boxH = 250 * scale;
+
             CNFGColor(0x333333FF);
             CNFGTackRectangle(20, boxY, w-20, boxY + boxH);
-            
+
             // instructions
             CNFGColor(0xAAAAAAFF);
-            DrawTextCentered("Enter Date:", 4, boxY + 30, w);
-            DrawTextCentered("YYYY MM DD", 3, boxY + 80, w);
+            DrawTextCentered("Enter Date:", GetTextScale(4, scale), boxY + (30 * scale), w);
+            DrawTextCentered("YYYY MM DD", GetTextScale(3, scale), boxY + (80 * scale), w);
 
             // actual input
             CNFGColor(0x00FF00FF);
             char prompt[100];
             sprintf(prompt, "%s_", inputBuffer);
-            DrawTextCentered(prompt, 6, boxY + 150, w);
+            DrawTextCentered(prompt, GetTextScale(6, scale), boxY + (150 * scale), w);
             
         } else {
             // draw black backing to hide scrolling text
+            int footerHeight = 150 * scale;
+ 
             CNFGColor(0x000000FF); 
-            CNFGTackRectangle(0, h-150, w, h);
+            CNFGTackRectangle(0, h - footerHeight, w, h);
 
             CNFGColor(0x333333FF);
-            CNFGTackRectangle(0, h-150, w, h);
+            CNFGTackRectangle(0, h - footerHeight, w, h);
+
             CNFGColor(0xFFFFFFFF);
-            DrawTextCentered("+ Add Date", 5, h-110, w);
+            DrawTextCentered("+ Add Date", GetTextScale(5, scale), h - (110 * scale), w);
         }
 
         CNFGSwapBuffers();
